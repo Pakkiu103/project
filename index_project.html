@@ -1,0 +1,1526 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>消費習慣分析 App</title>
+  <!-- Ionic CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ionic/core/css/ionic.bundle.css">
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.esm.js"></script>
+  <script nomodule src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.js"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <style>
+    /* 全局通用樣式 */
+    body {
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    /* 🌙 深色模式完整適配 CSS */
+    body.dark-mode {
+      --ion-background-color: #121212;
+      --ion-text-color: #ffffff;
+      --ion-item-background: #1e1e1e;
+      --ion-card-background: #1e1e1e;
+      background-color: #121212;
+      color: #ffffff;
+    }
+
+    body.dark-mode h1,
+    body.dark-mode h2,
+    body.dark-mode h3,
+    body.dark-mode h4,
+    body.dark-mode p,
+    body.dark-mode ion-card-title,
+    body.dark-mode ion-card-subtitle,
+    body.dark-mode ion-item,
+    body.dark-mode ion-label {
+      color: #ffffff !important;
+    }
+
+    body.dark-mode ion-card {
+      background: #1e1e1e;
+      color: #ffffff;
+    }
+
+    .error-msg {
+      color: var(--ion-color-danger, #eb445a);
+      font-size: 12px;
+      padding-left: 16px;
+      margin-top: 4px;
+    }
+    .stat-card { text-align: center; }
+    .stat-amount {
+      font-size: 24px;
+      font-weight: bold;
+      color: var(--ion-color-primary, #3880ff);
+    }
+    .chart-container {
+      position: relative;
+      margin: 16px auto;
+      height: 260px;
+      width: 100%;
+      max-width: 320px;
+      cursor: pointer;
+    }
+
+    /* 獨立類別明細全螢幕頁面 */
+    #categoryDetailPage {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background:
+        radial-gradient(58% 36% at 18% 8%, rgba(120, 160, 255, 0.28), transparent 70%),
+        radial-gradient(64% 40% at 50% 96%, rgba(240, 160, 190, 0.20), transparent 72%),
+        linear-gradient(160deg, #e8f0fe 0%, #f3f6fd 45%, #fdf1f5 100%);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    body.dark-mode #categoryDetailPage {
+      background:
+        radial-gradient(58% 38% at 18% 8%, rgba(90, 120, 200, 0.28), transparent 70%),
+        radial-gradient(60% 40% at 50% 96%, rgba(150, 90, 190, 0.20), transparent 72%),
+        linear-gradient(160deg, #0e1626 0%, #121a2b 50%, #1a1430 100%);
+    }
+    .detail-top-bar {
+      background-color: rgba(56, 128, 255, 0.55);
+      backdrop-filter: blur(14px) saturate(160%);
+      -webkit-backdrop-filter: blur(14px) saturate(160%);
+      color: #ffffff;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      flex-shrink: 0;
+    }
+    .btn-back-home {
+      background-color: #ff4961;
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .btn-back-home:active {
+      background-color: #d9384f;
+    }
+    .detail-title-text {
+      font-size: 18px;
+      font-weight: bold;
+      margin-left: 16px;
+      color: #ffffff;
+    }
+
+    /* 自訂彈窗通用 Overlay */
+    .inline-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 20000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .inline-modal-card {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.68));
+      backdrop-filter: blur(18px) saturate(160%);
+      -webkit-backdrop-filter: blur(18px) saturate(160%);
+      border: 1px solid rgba(255, 255, 255, 0.70);
+      width: 85%;
+      max-width: 360px;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow:
+        2px 3px 6px rgba(15, 23, 42, 0.14),
+        14px 24px 44px rgba(15, 23, 42, 0.20),
+        inset 0 1.5px 1px rgba(255, 255, 255, 0.75),
+        inset 0 -2px 2px rgba(255, 255, 255, 0.35),
+        inset 0 0 0.8px rgba(255, 255, 255, 0.65);
+    }
+    body.dark-mode .inline-modal-card {
+      background: linear-gradient(135deg, rgba(22, 26, 38, 0.92), rgba(13, 16, 26, 0.88));
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      box-shadow:
+        2px 3px 6px rgba(0, 0, 0, 0.45),
+        14px 24px 44px rgba(0, 0, 0, 0.40),
+        inset 0 1.5px 1px -0.5px rgba(255, 255, 255, 0.26),
+        inset 0 -2.5px 2px -1px rgba(120, 150, 180, 0.25),
+        inset 0 0 22px rgba(255, 255, 255, 0.05);
+      color: #ffffff;
+    }
+    .custom-input {
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+      padding: 12px;
+      margin-top: 6px;
+      margin-bottom: 4px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+      box-sizing: border-box;
+      background: #fff;
+      color: #000;
+    }
+    body.dark-mode .custom-input {
+      background: #2a2a2a;
+      color: #fff;
+      border-color: #444;
+    }
+    /* iOS 原生 date / select 控制項會無視寬度出界，移除原生外觀改自繪圖標 */
+    input[type="date"].custom-input,
+    select.custom-input {
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    input[type="date"].custom-input {
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="%23999" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="3.5" width="14" height="12.5" rx="2"/><path d="M2 7.5h14M6 2v3M12 2v3"/></svg>');
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+    }
+    select.custom-input {
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="%23999" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5l4 4 4-4"/></svg>');
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+    }
+    body.dark-mode input[type="date"].custom-input {
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="%23b8c2d4" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="3.5" width="14" height="12.5" rx="2"/><path d="M2 7.5h14M6 2v3M12 2v3"/></svg>');
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+    }
+    body.dark-mode select.custom-input {
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="%23b8c2d4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5l4 4 4-4"/></svg>');
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+    }
+    .field-label {
+      font-weight: bold;
+      margin-top: 12px;
+      display: block;
+      font-size: 14px;
+    }
+    .export-import-btns {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    /* ===== 介面美化：磨砂玻璃設計 ===== */
+
+    /* 標題圖示對齊 */
+    .title-icon {
+      vertical-align: -0.15em;
+      margin-right: 6px;
+      font-size: 1.05em;
+    }
+
+    /* 漸層背景＋柔和光斑 */
+    ion-content {
+      --background:
+        radial-gradient(58% 36% at 18% 8%, rgba(120, 160, 255, 0.28), transparent 70%),
+        radial-gradient(52% 34% at 85% 30%, rgba(240, 160, 190, 0.22), transparent 70%),
+        radial-gradient(64% 40% at 50% 96%, rgba(140, 200, 220, 0.22), transparent 72%),
+        linear-gradient(160deg, #e8f0fe 0%, #f3f6fd 45%, #fdf1f5 100%);
+    }
+    body.dark-mode ion-content {
+      --background:
+        radial-gradient(58% 38% at 18% 8%, rgba(90, 120, 200, 0.28), transparent 70%),
+        radial-gradient(52% 36% at 85% 30%, rgba(150, 90, 190, 0.22), transparent 70%),
+        radial-gradient(60% 40% at 50% 96%, rgba(60, 130, 170, 0.22), transparent 72%),
+        linear-gradient(160deg, #0e1626 0%, #121a2b 50%, #1a1430 100%);
+    }
+
+    /* 內容頂部留位 */
+    ion-tab ion-content.ion-padding {
+      --padding-top: 20px;
+    }
+
+    /* 所有卡片 Box：亞加力通告板質感（邊光 + 反光紋 + 掃光 + 圓銀釘 + 浮影） */
+    ion-card {
+      --background: linear-gradient(135deg, rgba(255, 255, 255, 0.30), rgba(255, 255, 255, 0.12));
+      backdrop-filter: blur(14px) saturate(150%);
+      -webkit-backdrop-filter: blur(14px) saturate(150%);
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      position: relative;
+      overflow: hidden;
+      box-shadow:
+        2px 3px 6px rgba(15, 23, 42, 0.10),
+        10px 18px 32px rgba(15, 23, 42, 0.10),
+        26px 44px 64px rgba(15, 23, 42, 0.08),
+        inset 0 1.5px 1px rgba(255, 255, 255, 0.70),
+        inset 1.5px 0 1px rgba(255, 255, 255, 0.35),
+        inset 0 -2.5px 2px rgba(255, 255, 255, 0.35),
+        inset -1.5px 0 1.5px rgba(15, 23, 42, 0.06),
+        inset 0 0 0.8px rgba(255, 255, 255, 0.60);
+    }
+    /* 亞加力面反光紋 + 定時掃光 */
+    ion-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      background:
+        linear-gradient(115deg, transparent 46%, rgba(255, 255, 255, 0.16) 49%, rgba(255, 255, 255, 0.32) 50%, rgba(255, 255, 255, 0.16) 51%, transparent 54%),
+        linear-gradient(118deg, transparent 21%, rgba(255, 255, 255, 0.14) 25%, rgba(255, 255, 255, 0.24) 28%, rgba(255, 255, 255, 0.07) 31.5%, transparent 37%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.20), rgba(255, 255, 255, 0.04) 14%, transparent 26%);
+      background-size: 60% 100%, 100% 100%, 100% 100%;
+      background-position: -150% 0, 0 0, 0 0;
+      background-repeat: no-repeat;
+      animation: cardSweep 6s ease-in-out infinite;
+    }
+    @keyframes cardSweep {
+      0%, 20% { background-position: -150% 0, 0 0, 0 0; }
+      60%, 100% { background-position: 250% 0, 0 0, 0 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      ion-card::before, ion-tab-bar::before { animation: none; }
+    }
+    /* 通告板圓銀釘（四角，金屬同心圓 + 高光 + 螺絲芯） */
+    ion-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      background:
+        radial-gradient(circle 2.6px at 16.5px 14px, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0) 100%),
+        radial-gradient(circle 2.6px at calc(100% - 20.5px) 14px, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0) 100%),
+        radial-gradient(circle 2.6px at 16.5px calc(100% - 19px), rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0) 100%),
+        radial-gradient(circle 2.6px at calc(100% - 20.5px) calc(100% - 19px), rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0) 100%),
+        radial-gradient(circle 2.3px at 18.5px 16.5px, #8a8a8a 0%, #565656 70%, rgba(86, 86, 86, 0) 78%),
+        radial-gradient(circle 2.3px at calc(100% - 18.5px) 16.5px, #8a8a8a 0%, #565656 70%, rgba(86, 86, 86, 0) 78%),
+        radial-gradient(circle 2.3px at 18.5px calc(100% - 16.5px), #8a8a8a 0%, #565656 70%, rgba(86, 86, 86, 0) 78%),
+        radial-gradient(circle 2.3px at calc(100% - 18.5px) calc(100% - 16.5px), #8a8a8a 0%, #565656 70%, rgba(86, 86, 86, 0) 78%),
+        radial-gradient(circle 7px at 18.5px 16.5px, #f0f0f0 0%, #d2d2d2 30%, #ababab 55%, #8c8c8c 78%, rgba(140, 140, 140, 0) 92%),
+        radial-gradient(circle 7px at calc(100% - 18.5px) 16.5px, #f0f0f0 0%, #d2d2d2 30%, #ababab 55%, #8c8c8c 78%, rgba(140, 140, 140, 0) 92%),
+        radial-gradient(circle 7px at 18.5px calc(100% - 16.5px), #f0f0f0 0%, #d2d2d2 30%, #ababab 55%, #8c8c8c 78%, rgba(140, 140, 140, 0) 92%),
+        radial-gradient(circle 7px at calc(100% - 18.5px) calc(100% - 16.5px), #f0f0f0 0%, #d2d2d2 30%, #ababab 55%, #8c8c8c 78%, rgba(140, 140, 140, 0) 92%);
+      filter: drop-shadow(1px 2px 2px rgba(10, 15, 25, 0.30));
+    }
+    ion-card-header {
+      padding-top: 30px;
+    }
+    body.dark-mode ion-card {
+      --background: linear-gradient(135deg, rgba(16, 20, 30, 0.62), rgba(8, 11, 19, 0.55));
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      box-shadow:
+        2px 3px 6px rgba(0, 0, 0, 0.42),
+        12px 20px 38px rgba(0, 0, 0, 0.34),
+        26px 44px 64px rgba(0, 0, 0, 0.24),
+        inset 0 2px 1px -0.5px rgba(255, 255, 255, 0.28),
+        inset 2px 0 1.5px -0.5px rgba(255, 255, 255, 0.14),
+        inset 0 -3.5px 2.5px -1px rgba(120, 150, 180, 0.30),
+        inset -2px 0 1.5px -0.5px rgba(0, 0, 0, 0.35),
+        inset 0 0 26px rgba(255, 255, 255, 0.06);
+    }
+    body.dark-mode ion-card::before {
+      background:
+        linear-gradient(115deg, transparent 46%, rgba(255, 255, 255, 0.08) 49%, rgba(255, 255, 255, 0.16) 50%, rgba(255, 255, 255, 0.08) 51%, transparent 54%),
+        linear-gradient(118deg, transparent 21%, rgba(255, 255, 255, 0.10) 25%, rgba(255, 255, 255, 0.18) 28%, rgba(255, 255, 255, 0.06) 31.5%, transparent 37%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.03) 14%, transparent 26%);
+      background-size: 60% 100%, 100% 100%, 100% 100%;
+      background-position: -150% 0, 0 0, 0 0;
+      background-repeat: no-repeat;
+    }
+
+    /* 列表項目：亞加力玻璃底（移除 iOS 底部分隔線） */
+    ion-list {
+      background: transparent !important;
+    }
+    ion-list ion-item {
+      --background: linear-gradient(135deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.16));
+      --border-width: 0;
+      --inner-border-width: 0;
+      --highlight-height: 0;
+      --border-radius: 14px;
+      overflow: hidden;
+      backdrop-filter: blur(10px) saturate(150%);
+      -webkit-backdrop-filter: blur(10px) saturate(150%);
+      border-radius: 14px;
+      margin-bottom: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      box-shadow:
+        1px 2px 4px rgba(15, 23, 42, 0.08),
+        6px 10px 20px rgba(15, 23, 42, 0.08),
+        inset 0 1px 1px rgba(255, 255, 255, 0.60),
+        inset 0 -1.5px 1.5px rgba(255, 255, 255, 0.25),
+        inset 0 0 0.6px rgba(255, 255, 255, 0.50);
+    }
+    body.dark-mode ion-list ion-item {
+      --background: linear-gradient(135deg, rgba(34, 40, 58, 0.38), rgba(18, 22, 34, 0.26));
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow:
+        1px 2px 5px rgba(0, 0, 0, 0.38),
+        8px 14px 26px rgba(0, 0, 0, 0.30),
+        inset 0 1.5px 1px -0.5px rgba(255, 255, 255, 0.24),
+        inset 0 -2.5px 2px -1px rgba(120, 150, 180, 0.24),
+        inset 0 0 18px rgba(255, 255, 255, 0.05);
+    }
+    /* 篩選列 item 同款玻璃 */
+    .filter-row ion-item {
+      --background: linear-gradient(135deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.16));
+      --border-width: 0;
+      --inner-border-width: 0;
+      --highlight-height: 0;
+      --border-radius: 14px;
+      overflow: hidden;
+      backdrop-filter: blur(10px) saturate(150%);
+      -webkit-backdrop-filter: blur(10px) saturate(150%);
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      box-shadow:
+        1px 2px 4px rgba(15, 23, 42, 0.08),
+        6px 10px 20px rgba(15, 23, 42, 0.08),
+        inset 0 1px 1px rgba(255, 255, 255, 0.60),
+        inset 0 -1.5px 1.5px rgba(255, 255, 255, 0.25);
+    }
+    body.dark-mode .filter-row ion-item {
+      --background: linear-gradient(135deg, rgba(34, 40, 58, 0.38), rgba(18, 22, 34, 0.26));
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow:
+        1px 2px 5px rgba(0, 0, 0, 0.38),
+        8px 14px 26px rgba(0, 0, 0, 0.30),
+        inset 0 1.5px 1px -0.5px rgba(255, 255, 255, 0.24),
+        inset 0 -2.5px 2px -1px rgba(120, 150, 180, 0.24);
+    }
+    /* 卡片內非清單 item 保持透明乾淨 */
+    ion-card > ion-card-content > ion-item {
+      --background: transparent;
+      border: none;
+      margin-bottom: 0;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      box-shadow: none;
+      --border-width: 0;
+      --inner-border-width: 0;
+      --highlight-height: 0;
+    }
+
+    /* 底部導航：整排半圓形亞加力玻璃盒，選中明亮標示 */
+    ion-tab-bar {
+      --background: linear-gradient(135deg, rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0.40));
+      backdrop-filter: blur(18px) saturate(180%);
+      -webkit-backdrop-filter: blur(18px) saturate(180%);
+      margin: 0 14px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.60);
+      box-shadow:
+        2px 3px 6px rgba(15, 23, 42, 0.12),
+        12px 20px 38px rgba(15, 23, 42, 0.14),
+        inset 0 1.5px 1px rgba(255, 255, 255, 0.70),
+        inset 0 -2px 2px rgba(255, 255, 255, 0.30),
+        inset 0 0 0.8px rgba(255, 255, 255, 0.60);
+      height: 62px;
+      padding: 0 10px;
+    }
+    body.dark-mode ion-tab-bar {
+      --background: linear-gradient(135deg, rgba(18, 22, 33, 0.68), rgba(10, 13, 21, 0.58));
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      box-shadow:
+        2px 3px 6px rgba(0, 0, 0, 0.42),
+        12px 20px 38px rgba(0, 0, 0, 0.36),
+        inset 0 1.5px 1px -0.5px rgba(255, 255, 255, 0.26),
+        inset 0 -2.5px 2px -1px rgba(120, 150, 180, 0.26),
+        inset 0 0 20px rgba(255, 255, 255, 0.05);
+    }
+    ion-tab-button {
+      border-radius: 999px;
+      margin: 6px 4px;
+      overflow: hidden;
+    }
+    ion-tab-button.tab-selected {
+      background: rgba(56, 128, 255, 0.20);
+      color: var(--ion-color-primary, #3880ff);
+      box-shadow: 0 0 14px rgba(56, 128, 255, 0.40), inset 0 0 0 1.5px rgba(56, 128, 255, 0.45);
+    }
+    body.dark-mode ion-tab-button.tab-selected {
+      background: rgba(102, 150, 255, 0.24);
+      color: #9db9ff;
+      box-shadow: 0 0 16px rgba(102, 150, 255, 0.50), inset 0 0 0 1.5px rgba(102, 150, 255, 0.45);
+    }
+    /* 導航列掃光 */
+    ion-tab-bar {
+      position: relative;
+      overflow: hidden;
+    }
+    ion-tab-bar::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      background: linear-gradient(115deg, transparent 46%, rgba(255, 255, 255, 0.14) 49%, rgba(255, 255, 255, 0.28) 50%, rgba(255, 255, 255, 0.14) 51%, transparent 54%);
+      background-size: 60% 100%;
+      background-position: -150% 0;
+      background-repeat: no-repeat;
+      animation: tabSweep 7s ease-in-out infinite;
+    }
+    @keyframes tabSweep {
+      0%, 25% { background-position: -150% 0; }
+      65%, 100% { background-position: 250% 0; }
+    }
+
+    /* ===== 深色模式撞色修復（確保所有文字清晰可見） ===== */
+    body.dark-mode ion-card-content,
+    body.dark-mode li,
+    body.dark-mode ul,
+    body.dark-mode strong,
+    body.dark-mode ion-note {
+      color: #e8e8e8;
+    }
+    body.dark-mode ion-card-subtitle {
+      color: #cfcfcf;
+    }
+    body.dark-mode .stat-amount {
+      color: #8ab4ff;
+    }
+    body.dark-mode .field-label {
+      color: #ffffff;
+    }
+    body.dark-mode ion-searchbar {
+      --background: linear-gradient(135deg, rgba(34, 40, 58, 0.45), rgba(18, 22, 34, 0.32));
+      --color: #ffffff;
+      --placeholder-color: #9aa4b5;
+      --icon-color: #b8c2d4;
+      --clear-button-color: #b8c2d4;
+      --border-radius: 14px;
+      --box-shadow: none;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 14px;
+      overflow: hidden;
+      backdrop-filter: blur(10px) saturate(150%);
+      -webkit-backdrop-filter: blur(10px) saturate(150%);
+    }
+    /* 淺色模式搜尋列：同款玻璃 */
+    ion-searchbar {
+      --background: linear-gradient(135deg, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.18));
+      --border-radius: 14px;
+      --box-shadow: none;
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      border-radius: 14px;
+      overflow: hidden;
+      backdrop-filter: blur(10px) saturate(150%);
+      -webkit-backdrop-filter: blur(10px) saturate(150%);
+    }
+    body.dark-mode ion-select,
+    body.dark-mode ion-input,
+    body.dark-mode ion-select::part(text) {
+      color: #ffffff;
+    }
+    body.dark-mode .custom-input::placeholder {
+      color: #888;
+    }
+    body.dark-mode ion-badge {
+      --color: #ffffff;
+    }
+
+    /* Alert 彈窗跟返主題（亞加力玻璃） */
+    ion-alert {
+      --background: rgba(255, 255, 255, 0.92);
+      --backdrop-opacity: 0.5;
+    }
+    body.dark-mode ion-alert {
+      --background: #1b2130;
+      --ion-text-color: #ffffff;
+      --backdrop-opacity: 0.65;
+    }
+
+    /* 「匯入 JSON」按鈕深色模式撞色修復（outline 按鈕用 --ion-color-base 上色） */
+    body.dark-mode ion-button[color="dark"] {
+      --ion-color-base: #d7deeb;
+      --ion-color-dark: #d7deeb;
+      --color: #d7deeb;
+      --border-color: rgba(215, 222, 235, 0.6);
+    }
+  </style>
+</head>
+<body>
+  <ion-app>
+    <ion-content>
+      <ion-tabs>
+        <!-- Tab 1: 分析報告 -->
+        <ion-tab tab="tab-analysis">
+          <ion-content class="ion-padding">
+            <h2><ion-icon name="analytics-outline" class="title-icon"></ion-icon>消費習慣分析</h2>
+            <p style="font-size: 13px; opacity: 0.8; margin-top: -8px;"><ion-icon name="bulb-outline" class="title-icon"></ion-icon>提示：點擊圖表中的類別可查看該類別明細</p>
+            
+            <ion-card class="stat-card">
+              <ion-card-header>
+                <ion-card-subtitle>本期總支出</ion-card-subtitle>
+                <ion-card-title class="stat-amount" id="totalExpense">HK$ 0</ion-card-title>
+              </ion-card-header>
+            </ion-card>
+
+            <!-- 圓形圖卡片 -->
+            <ion-card>
+              <ion-card-header>
+                <ion-card-title style="font-size: 16px;"><ion-icon name="pie-chart-outline" class="title-icon"></ion-icon>支出類別比例圓形圖</ion-card-title>
+              </ion-card-header>
+              <ion-card-content>
+                <div class="chart-container">
+                  <canvas id="expensePieChart"></canvas>
+                </div>
+                <div id="analyticsAdvice" style="color: var(--ion-color-warning-shade, #ffc409); font-weight: bold; margin-top: 12px;"></div>
+              </ion-card-content>
+            </ion-card>
+
+            <!-- 棒形圖卡片 -->
+            <ion-card>
+              <ion-card-header>
+                <ion-card-title style="font-size: 16px;"><ion-icon name="bar-chart-outline" class="title-icon"></ion-icon>各類別支出比較棒形圖</ion-card-title>
+              </ion-card-header>
+              <ion-card-content>
+                <div class="chart-container">
+                  <canvas id="expenseBarChart"></canvas>
+                </div>
+              </ion-card-content>
+            </ion-card>
+          </ion-content>
+        </ion-tab>
+
+        <!-- Tab 2: 全部位明細紀錄 (新增搜尋與排序) -->
+        <ion-tab tab="tab-history">
+          <ion-content class="ion-padding">
+            <h2><ion-icon name="receipt-outline" class="title-icon"></ion-icon>消費紀錄明細</h2>
+
+            <!-- 🔍 關鍵字搜尋欄 -->
+            <ion-searchbar id="historySearchInput" placeholder="搜尋項目名稱..." show-clear-button="always"></ion-searchbar>
+
+            <!-- 類別與排序篩選列 -->
+            <div class="filter-row" style="display: flex; gap: 8px;">
+              <ion-item style="flex: 1; margin-bottom: 12px;">
+                <ion-icon name="funnel-outline" slot="start" color="primary"></ion-icon>
+                <ion-select id="historyCategoryFilter" label="篩選類別" label-placement="floating" value="ALL">
+                  <ion-select-option value="ALL">全部類別</ion-select-option>
+                </ion-select>
+              </ion-item>
+
+              <ion-item style="flex: 1; margin-bottom: 12px;">
+                <ion-icon name="swap-vertical-outline" slot="start" color="primary"></ion-icon>
+                <ion-select id="historySortOrder" label="排序方式" label-placement="floating" value="date-desc">
+                  <ion-select-option value="date-desc">日期 (最新→最舊)</ion-select-option>
+                  <ion-select-option value="date-asc">日期 (最舊→最新)</ion-select-option>
+                  <ion-select-option value="amount-desc">金額 (高→低)</ion-select-option>
+                  <ion-select-option value="amount-asc">金額 (低→高)</ion-select-option>
+                </ion-select>
+              </ion-item>
+            </div>
+
+            <ion-list id="expenseListContainer" lines="none"></ion-list>
+          </ion-content>
+        </ion-tab>
+
+        <!-- Tab 3: 設定、類別管理與備份 -->
+        <ion-tab tab="tab-settings">
+          <ion-content class="ion-padding">
+            <h2><ion-icon name="settings-outline" class="title-icon"></ion-icon>偏好、數據與小組資訊</h2>
+
+            <!-- 👨‍🎓 小組成員與個人貢獻資訊 (評分與匯報用) -->
+            <ion-card>
+              <ion-card-header>
+                <ion-card-title style="font-size: 16px;"><ion-icon name="people-outline" class="title-icon"></ion-icon>小組資訊與貢獻說明</ion-card-title>
+              </ion-card-header>
+              <ion-card-content>
+                <p style="font-size: 14px; margin-bottom: 6px;"><strong>課程：</strong>手機應用程式開發導論 (DAE_00CIT3027)</p>
+                <p style="font-size: 14px; margin-bottom: 6px;"><strong>小組成員：</strong></p>
+                <ul style="margin: 0; padding-left: 20px; font-size: 13px;">
+                  <li>成員 1：[何栢僑 Ho Pak Kiu] (學號: 26803909) - UI 介面設計 & Ionic 框架</li>
+                  <li>成員 2：[劉志權 Lau Chi Kuen] (學號: 09110214) - Chart.js, JavaScript 邏輯 & 數據持久化</li>
+                  <li>成員 3：[楊焯文 Yeung Cheuk Man] (學號: 1161166) -  匯報Power Point及講犒整理, 圖表整合 & 匯出/匯入</li>
+                </ul>
+              </ion-card-content>
+            </ion-card>
+
+            <!-- 📤 數據匯出與匯入功能卡片 -->
+            <ion-card>
+              <ion-card-header>
+                <ion-card-title style="font-size: 16px;"><ion-icon name="save-outline" class="title-icon"></ion-icon>數據備份與匯出 (CSV / JSON)</ion-card-title>
+              </ion-card-header>
+              <ion-card-content>
+                <p style="font-size: 13px; opacity: 0.8; margin-bottom: 10px;">您可以將消費紀錄匯出為 Excel CSV 檔，或備份完整 JSON 數據。</p>
+                <div class="export-import-btns">
+                  <ion-button id="exportCsvBtn" size="small" color="success">
+                    <ion-icon name="document-text-outline" slot="start"></ion-icon>匯出 CSV
+                  </ion-button>
+                  <ion-button id="exportJsonBtn" size="small" color="tertiary">
+                    <ion-icon name="download-outline" slot="start"></ion-icon>備份 JSON
+                  </ion-button>
+                  <ion-button id="triggerImportBtn" size="small" fill="outline" color="dark">
+                    <ion-icon name="cloud-upload-outline" slot="start"></ion-icon>匯入 JSON
+                  </ion-button>
+                  <input type="file" id="importJsonInput" accept=".json" style="display: none;" />
+                </div>
+              </ion-card-content>
+            </ion-card>
+
+            <!-- 🏷️ 類別管理 -->
+            <ion-card>
+              <ion-card-header>
+                <ion-card-title style="font-size: 16px;"><ion-icon name="pricetags-outline" class="title-icon"></ion-icon>自訂消費類別管理</ion-card-title>
+              </ion-card-header>
+              <ion-card-content>
+                <ion-item>
+                  <ion-input id="inputNewCategory" label="新增類別名稱" label-placement="floating" placeholder="例如: 醫療、寵物"></ion-input>
+                  <ion-button id="addCategoryBtn" slot="end" size="small">新增類別</ion-button>
+                </ion-item>
+                <div id="categoryError" class="error-msg" hidden>類別名稱不能為空或重複</div>
+
+                <h4 style="margin-top: 16px;">現有類別 (點擊垃圾桶可刪除)：</h4>
+                <ion-list id="categoryManageList" lines="none"></ion-list>
+              </ion-card-content>
+            </ion-card>
+
+            <ion-card>
+              <ion-card-content>
+                <ion-item>
+                  <ion-label>深色模式 (Dark Mode)</ion-label>
+                  <ion-toggle id="darkModeToggle" slot="end"></ion-toggle>
+                </ion-item>
+                <ion-item>
+                  <ion-label>重置所有消費數據</ion-label>
+                  <ion-button id="clearDataBtn" color="danger" slot="end">清除數據</ion-button>
+                </ion-item>
+              </ion-card-content>
+            </ion-card>
+          </ion-content>
+        </ion-tab>
+
+        <!-- 底部分頁導航欄 -->
+        <ion-tab-bar slot="bottom">
+          <ion-tab-button tab="tab-analysis">
+            <ion-icon name="pie-chart-outline"></ion-icon>
+            <ion-label>分析報告</ion-label>
+          </ion-tab-button>
+          <ion-tab-button tab="tab-history">
+            <ion-icon name="receipt-outline"></ion-icon>
+            <ion-label>消費紀錄</ion-label>
+          </ion-tab-button>
+          <ion-tab-button tab="tab-settings">
+            <ion-icon name="settings-outline"></ion-icon>
+            <ion-label>設定與備份</ion-label>
+          </ion-tab-button>
+        </ion-tab-bar>
+      </ion-tabs>
+
+      <!-- 新增按鈕 -->
+      <ion-fab vertical="bottom" horizontal="end" slot="fixed" style="margin-bottom: 84px;">
+        <ion-fab-button id="openModalFab">
+          <ion-icon name="add"></ion-icon>
+        </ion-fab-button>
+      </ion-fab>
+    </ion-content>
+  </ion-app>
+
+  <!-- 新增消費 Alert Box 彈窗 -->
+  <div id="addOverlay" class="inline-modal-overlay" style="display: none;">
+    <div class="inline-modal-card">
+      <h3 style="margin-top: 0; text-align: center; color: #3880ff;"><ion-icon name="add-circle-outline" class="title-icon"></ion-icon>新增消費紀錄</h3>
+
+      <label class="field-label">消費項目名稱 *</label>
+      <input type="text" id="inputTitle" class="custom-input" placeholder="例如: 午餐、巴士車費">
+      <div id="titleError" class="error-msg" hidden>請輸入消費項目名稱</div>
+
+      <label class="field-label">金額 (HK$) *</label>
+      <input type="number" id="inputAmount" class="custom-input" placeholder="例如: 50">
+      <div id="amountError" class="error-msg" hidden>請輸入有效的金額 (大於 0)</div>
+
+      <label class="field-label">消費日期 *</label>
+      <input type="date" id="inputDate" class="custom-input">
+      <div id="dateError" class="error-msg" hidden>請選擇有效日期</div>
+
+      <label class="field-label">消費類別</label>
+      <select id="selectCategory" class="custom-input"></select>
+
+      <div style="margin-top: 20px; display: flex; gap: 10px;">
+        <ion-button id="closeModalBtn" style="flex: 1;" fill="clear" color="medium">取消</ion-button>
+        <ion-button id="confirmAddBtn" style="flex: 1;" color="primary">儲存紀錄</ion-button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 全局修改彈窗 -->
+  <div id="editOverlay" class="inline-modal-overlay" style="display: none;">
+    <div class="inline-modal-card">
+      <h3 style="margin-top: 0; text-align: center; color: #3880ff;"><ion-icon name="create-outline" class="title-icon"></ion-icon>修改消費明細</h3>
+      
+      <label class="field-label">消費項目名稱 *</label>
+      <input type="text" id="editTitle" class="custom-input" placeholder="請輸入名稱">
+      <div id="editTitleError" class="error-msg" hidden>請輸入消費項目名稱</div>
+
+      <label class="field-label">金額 (HK$) *</label>
+      <input type="number" id="editAmount" class="custom-input" placeholder="請輸入金額">
+      <div id="editAmountError" class="error-msg" hidden>請輸入有效的金額 (大於 0)</div>
+
+      <label class="field-label">消費日期 *</label>
+      <input type="date" id="editDate" class="custom-input">
+      <div id="editDateError" class="error-msg" hidden>請選擇有效日期</div>
+
+      <label class="field-label">消費類別 *</label>
+      <select id="editSelectCategory" class="custom-input"></select>
+
+      <div style="margin-top: 20px; display: flex; gap: 10px;">
+        <ion-button id="confirmEditBtn" style="flex: 1;" color="tertiary">更新</ion-button>
+        <ion-button id="closeEditModalBtn" style="flex: 1;" fill="clear" color="medium">取消</ion-button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 獨立類別明細頁面 -->
+  <div id="categoryDetailPage" style="display: none;">
+    <div class="detail-top-bar">
+      <button id="backToHomeBtn" class="btn-back-home">
+        <ion-icon name="arrow-back-outline" style="font-size: 18px;"></ion-icon>
+        返回主頁面
+      </button>
+      <div id="detailPageTitle" class="detail-title-text">類別消費明細</div>
+    </div>
+
+    <div style="padding: 16px; flex: 1;">
+      <ion-card class="stat-card">
+        <ion-card-header>
+          <ion-card-subtitle id="detailCategorySubtitle">類別總支出</ion-card-subtitle>
+          <ion-card-title class="stat-amount" id="detailCategoryTotal">HK$ 0</ion-card-title>
+        </ion-card-header>
+      </ion-card>
+      
+      <p style="font-size: 13px; opacity: 0.8; margin-bottom: 8px;"><ion-icon name="calendar-outline" class="title-icon"></ion-icon>已按日期最新排列 (可修改或刪除)：</p>
+      <ion-list id="categoryDetailList" lines="none"></ion-list>
+    </div>
+
+    <!-- 自訂刪除確認彈窗 -->
+    <div id="deleteOverlay" class="inline-modal-overlay" style="display: none;">
+      <div class="inline-modal-card" style="text-align: center;">
+        <h3 style="margin-top: 0; color: #eb445a;"><ion-icon name="trash-outline" class="title-icon"></ion-icon>刪除確認</h3>
+        <p id="deleteConfirmMsg" style="margin: 16px 0; font-size: 15px;"></p>
+
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+          <ion-button id="cancelDeleteBtn" style="flex: 1;" fill="clear" color="medium">取消</ion-button>
+          <ion-button id="confirmDeleteBtn" style="flex: 1;" color="danger">確定刪除</ion-button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="https://cdn.jsdelivr.net/npm/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+  <script nomodule src="https://cdn.jsdelivr.net/npm/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+
+  <script>
+    const EXPENSE_STORAGE_KEY = 'CONSUMPTION_APP_DATA';
+    const CATEGORY_STORAGE_KEY = 'APP_CATEGORIES_DATA';
+
+    const defaultCategories = ['餐飲', '交通', '購物', '娛樂', '醫療', '其他'];
+    const defaultExpenses = [
+      { id: 1, title: '連鎖快餐午餐', amount: 65, category: '餐飲', date: '2026-08-20' },
+      { id: 2, title: '港鐵月票補貼', amount: 120, category: '交通', date: '2026-08-21' },
+      { id: 3, title: '購買新藍牙耳機', amount: 450, category: '購物', date: '2026-08-22' },
+      { id: 4, title: '中醫診症', amount: 900, category: '醫療', date: '2026-08-23' },
+      { id: 5, title: '西醫診症', amount: 800, category: '醫療', date: '2026-08-23' }
+    ];
+
+    let categories = JSON.parse(localStorage.getItem(CATEGORY_STORAGE_KEY)) || defaultCategories;
+    let expenses = JSON.parse(localStorage.getItem(EXPENSE_STORAGE_KEY)) || defaultExpenses;
+    let currentDetailCategory = '';
+    let editingExpenseId = null;
+    let deletingExpenseId = null;
+
+    function saveData() {
+      localStorage.setItem(CATEGORY_STORAGE_KEY, JSON.stringify(categories));
+      localStorage.setItem(EXPENSE_STORAGE_KEY, JSON.stringify(expenses));
+    }
+
+    function generateDistinctColors(count) {
+      const colors = [];
+      const goldenRatio = 0.618033988749895;
+      let hue = 0.6;
+
+      for (let i = 0; i < count; i++) {
+        hue += goldenRatio;
+        hue %= 1;
+        const finalHue = Math.floor(hue * 360);
+        colors.push(`hsl(${finalHue}, 75%, 50%)`);
+      }
+      return colors;
+    }
+
+    function getTodayString() {
+      return new Date().toISOString().split('T')[0];
+    }
+
+    const addOverlay = document.getElementById('addOverlay');
+    const openFab = document.getElementById('openModalFab');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const confirmAddBtn = document.getElementById('confirmAddBtn');
+
+    // 修改 DOM
+    const editOverlay = document.getElementById('editOverlay');
+    const closeEditModalBtn = document.getElementById('closeEditModalBtn');
+    const confirmEditBtn = document.getElementById('confirmEditBtn');
+    const editTitle = document.getElementById('editTitle');
+    const editAmount = document.getElementById('editAmount');
+    const editDate = document.getElementById('editDate');
+    const editSelectCategory = document.getElementById('editSelectCategory');
+    const editTitleError = document.getElementById('editTitleError');
+    const editAmountError = document.getElementById('editAmountError');
+    const editDateError = document.getElementById('editDateError');
+
+    // 刪除 DOM
+    const deleteOverlay = document.getElementById('deleteOverlay');
+    const deleteConfirmMsg = document.getElementById('deleteConfirmMsg');
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+
+    const inputTitle = document.getElementById('inputTitle');
+    const inputAmount = document.getElementById('inputAmount');
+    const inputDate = document.getElementById('inputDate');
+    const selectCategory = document.getElementById('selectCategory');
+
+    const inputNewCategory = document.getElementById('inputNewCategory');
+    const addCategoryBtn = document.getElementById('addCategoryBtn');
+    const categoryManageList = document.getElementById('categoryManageList');
+    const categoryError = document.getElementById('categoryError');
+
+    const titleError = document.getElementById('titleError');
+    const amountError = document.getElementById('amountError');
+    const dateError = document.getElementById('dateError');
+
+    const expenseListContainer = document.getElementById('expenseListContainer');
+    const historyCategoryFilter = document.getElementById('historyCategoryFilter');
+    const historySearchInput = document.getElementById('historySearchInput');
+    const historySortOrder = document.getElementById('historySortOrder');
+
+    const totalExpenseEl = document.getElementById('totalExpense');
+    const analyticsAdvice = document.getElementById('analyticsAdvice');
+
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    const clearDataBtn = document.getElementById('clearDataBtn');
+
+    // 匯出 / 匯入 DOM
+    const exportCsvBtn = document.getElementById('exportCsvBtn');
+    const exportJsonBtn = document.getElementById('exportJsonBtn');
+    const triggerImportBtn = document.getElementById('triggerImportBtn');
+    const importJsonInput = document.getElementById('importJsonInput');
+
+    const categoryDetailPage = document.getElementById('categoryDetailPage');
+    const backToHomeBtn = document.getElementById('backToHomeBtn');
+    const detailPageTitle = document.getElementById('detailPageTitle');
+    const detailCategorySubtitle = document.getElementById('detailCategorySubtitle');
+    const detailCategoryTotal = document.getElementById('detailCategoryTotal');
+    const categoryDetailList = document.getElementById('categoryDetailList');
+
+    let pieChart = null;
+    let barChart = null;
+
+    inputDate.value = getTodayString();
+
+    // 監聽搜尋與排序事件
+    historyCategoryFilter.addEventListener('ionChange', () => renderApp());
+    historySortOrder.addEventListener('ionChange', () => renderApp());
+    historySearchInput.addEventListener('ionInput', () => renderApp());
+
+    function openEditModal(id) {
+      const itemToEdit = expenses.find(i => i.id === id);
+      if (itemToEdit) {
+        editingExpenseId = id;
+        editTitle.value = itemToEdit.title;
+        editAmount.value = itemToEdit.amount;
+        editDate.value = itemToEdit.date || getTodayString();
+        
+        editSelectCategory.innerHTML = categories.map(cat => 
+          `<option value="${cat}" ${cat === itemToEdit.category ? 'selected' : ''}>${cat}</option>`
+        ).join('');
+
+        editTitleError.hidden = true;
+        editAmountError.hidden = true;
+        editDateError.hidden = true;
+        editOverlay.style.display = 'flex';
+      }
+    }
+
+    function openCategoryDetailPage(categoryName) {
+      currentDetailCategory = categoryName;
+      const filtered = expenses.filter(item => item.category === categoryName);
+      filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+      const categorySum = filtered.reduce((sum, item) => sum + parseFloat(item.amount), 0);
+
+      detailPageTitle.innerText = `「${categoryName}」類別明細`;
+      detailCategorySubtitle.innerText = `「${categoryName}」總支出`;
+      detailCategoryTotal.innerText = `HK$ ${categorySum.toFixed(1)}`;
+
+      if (filtered.length === 0) {
+        categoryDetailList.innerHTML = `<p style="text-align: center; opacity: 0.6; padding: 20px;">無此類別的消費紀錄</p>`;
+      } else {
+        categoryDetailList.innerHTML = filtered.map(item => `
+          <ion-item>
+            <ion-label>
+              <h2 style="font-weight: bold;">${item.title}</h2>
+              <p><ion-icon name="calendar-outline" class="title-icon"></ion-icon>消費日期: ${item.date}</p>
+            </ion-label>
+            <ion-note slot="end" color="primary" style="font-size: 16px; font-weight: bold; margin-right: 8px;">
+              HK$ ${parseFloat(item.amount).toFixed(1)}
+            </ion-note>
+            <ion-button slot="end" color="tertiary" fill="clear" class="edit-detail-btn" data-id="${item.id}">
+              <ion-icon name="create-outline" slot="icon-only"></ion-icon>
+            </ion-button>
+            <ion-button slot="end" color="danger" fill="clear" class="delete-detail-btn" data-id="${item.id}">
+              <ion-icon name="trash-outline" slot="icon-only"></ion-icon>
+            </ion-button>
+          </ion-item>
+        `).join('');
+      }
+
+      categoryDetailPage.style.display = 'flex';
+    }
+
+    categoryDetailList.addEventListener('click', (event) => {
+      const deleteBtn = event.target.closest('.delete-detail-btn');
+      const editBtn = event.target.closest('.edit-detail-btn');
+
+      if (deleteBtn) {
+        const id = parseInt(deleteBtn.getAttribute('data-id'));
+        const itemToDelete = expenses.find(i => i.id === id);
+        if (itemToDelete) {
+          deletingExpenseId = id;
+          deleteConfirmMsg.innerText = `確定要刪除「${itemToDelete.title}」嗎？`;
+          deleteOverlay.style.display = 'flex';
+        }
+      }
+
+      if (editBtn) {
+        const id = parseInt(editBtn.getAttribute('data-id'));
+        openEditModal(id);
+      }
+    });
+
+    confirmDeleteBtn.addEventListener('click', () => {
+      if (deletingExpenseId !== null) {
+        expenses = expenses.filter(i => i.id !== deletingExpenseId);
+        saveData();
+        renderApp();
+        deleteOverlay.style.display = 'none';
+        deletingExpenseId = null;
+
+        if (currentDetailCategory) {
+          openCategoryDetailPage(currentDetailCategory);
+        }
+      }
+    });
+
+    cancelDeleteBtn.addEventListener('click', () => {
+      deleteOverlay.style.display = 'none';
+      deletingExpenseId = null;
+    });
+
+    confirmEditBtn.addEventListener('click', () => {
+      const titleVal = editTitle.value.trim();
+      const amountVal = parseFloat(editAmount.value);
+      const dateVal = editDate.value;
+      const categoryVal = editSelectCategory.value;
+
+      let isValid = true;
+      if (titleVal === '') {
+        editTitleError.hidden = false;
+        isValid = false;
+      } else {
+        editTitleError.hidden = true;
+      }
+
+      if (isNaN(amountVal) || amountVal <= 0) {
+        editAmountError.hidden = false;
+        isValid = false;
+      } else {
+        editAmountError.hidden = true;
+      }
+
+      if (!dateVal) {
+        editDateError.hidden = false;
+        isValid = false;
+      } else {
+        editDateError.hidden = true;
+      }
+
+      if (isValid) {
+        const index = expenses.findIndex(i => i.id === editingExpenseId);
+        if (index !== -1) {
+          expenses[index].title = titleVal;
+          expenses[index].amount = amountVal;
+          expenses[index].date = dateVal;
+          expenses[index].category = categoryVal;
+
+          saveData();
+          renderApp();
+          
+          editOverlay.style.display = 'none';
+          if (currentDetailCategory) {
+            openCategoryDetailPage(currentDetailCategory);
+          }
+        }
+      }
+    });
+
+    closeEditModalBtn.addEventListener('click', () => {
+      editOverlay.style.display = 'none';
+    });
+
+    backToHomeBtn.addEventListener('click', () => {
+      categoryDetailPage.style.display = 'none';
+      currentDetailCategory = '';
+    });
+
+    // 🎨 動態適配 Chart.js 深色模式文字色彩
+    function updateCharts(labels, data) {
+      const dynamicColors = generateDistinctColors(labels.length);
+      const isDarkMode = document.body.classList.contains('dark-mode');
+      const textColor = isDarkMode ? '#ffffff' : '#666666';
+
+      const handleChartClick = (event, activeElements, chartInstance) => {
+        if (activeElements && activeElements.length > 0) {
+          const index = activeElements[0].index;
+          const clickedCategory = chartInstance.data.labels[index];
+          openCategoryDetailPage(clickedCategory);
+        }
+      };
+
+      // 圓形圖
+      const ctxPie = document.getElementById('expensePieChart').getContext('2d');
+      if (pieChart) {
+        pieChart.data.labels = labels;
+        pieChart.data.datasets[0].data = data;
+        pieChart.data.datasets[0].backgroundColor = dynamicColors;
+        pieChart.options.plugins.legend.labels.color = textColor;
+        pieChart.update();
+      } else {
+        pieChart = new Chart(ctxPie, {
+          type: 'pie',
+          data: {
+            labels: labels,
+            datasets: [{ data: data, backgroundColor: dynamicColors }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: { color: textColor }
+              }
+            },
+            onClick: (e, elements) => handleChartClick(e, elements, pieChart)
+          }
+        });
+      }
+
+      // 棒形圖
+      const ctxBar = document.getElementById('expenseBarChart').getContext('2d');
+      if (barChart) {
+        barChart.data.labels = labels;
+        barChart.data.datasets[0].data = data;
+        barChart.data.datasets[0].backgroundColor = dynamicColors;
+        barChart.options.scales.x.ticks.color = textColor;
+        barChart.options.scales.y.ticks.color = textColor;
+        barChart.update();
+      } else {
+        barChart = new Chart(ctxBar, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [{ label: '支出金額 (HK$)', data: data, backgroundColor: dynamicColors, borderRadius: 4 }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { ticks: { color: textColor } },
+              y: { beginAtZero: true, ticks: { precision: 0, color: textColor } }
+            },
+            onClick: (e, elements) => handleChartClick(e, elements, barChart)
+          }
+        });
+      }
+    }
+
+    function renderCategorySelectOptions() {
+      const optionsHtml = categories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
+      selectCategory.innerHTML = optionsHtml;
+      if (categories.length > 0) {
+        selectCategory.value = categories[0];
+      }
+
+      const currentSelectedFilter = historyCategoryFilter.value || 'ALL';
+      const filterHtml = `<ion-select-option value="ALL">全部類別</ion-select-option>` + 
+        categories.map(cat => `<ion-select-option value="${cat}">${cat}</ion-select-option>`).join('');
+      historyCategoryFilter.innerHTML = filterHtml;
+      
+      if (categories.includes(currentSelectedFilter) || currentSelectedFilter === 'ALL') {
+        historyCategoryFilter.value = currentSelectedFilter;
+      } else {
+        historyCategoryFilter.value = 'ALL';
+      }
+    }
+
+    function renderCategoryManageList() {
+      categoryManageList.innerHTML = categories.map((cat, index) => `
+        <ion-item>
+          <ion-label>${cat}</ion-label>
+          <ion-button slot="end" color="danger" fill="clear" class="delete-cat-btn" data-index="${index}">
+            <ion-icon name="trash-outline" slot="icon-only"></ion-icon>
+          </ion-button>
+        </ion-item>
+      `).join('');
+    }
+
+    function renderApp() {
+      let displayExpenses = [...expenses];
+
+      // 🔍 關鍵字搜尋過濾
+      const searchTerm = (historySearchInput.value || '').trim().toLowerCase();
+      if (searchTerm !== '') {
+        displayExpenses = displayExpenses.filter(item => 
+          item.title.toLowerCase().includes(searchTerm)
+        );
+      }
+
+      // 類別過濾
+      const selectedFilter = historyCategoryFilter.value || 'ALL';
+      if (selectedFilter !== 'ALL') {
+        displayExpenses = displayExpenses.filter(item => item.category === selectedFilter);
+      }
+
+      // 排序邏輯
+      const sortVal = historySortOrder.value || 'date-desc';
+      if (sortVal === 'date-desc') {
+        displayExpenses.sort((a, b) => new Date(b.date) - new Date(a.date));
+      } else if (sortVal === 'date-asc') {
+        displayExpenses.sort((a, b) => new Date(a.date) - new Date(b.date));
+      } else if (sortVal === 'amount-desc') {
+        displayExpenses.sort((a, b) => parseFloat(b.amount) - parseFloat(a.amount));
+      } else if (sortVal === 'amount-asc') {
+        displayExpenses.sort((a, b) => parseFloat(a.amount) - parseFloat(b.amount));
+      }
+
+      if (displayExpenses.length === 0) {
+        expenseListContainer.innerHTML = `<div style="text-align: center; padding: 40px; opacity: 0.6;"><p>暫無任何符合條件的消費紀錄</p></div>`;
+      } else {
+        expenseListContainer.innerHTML = displayExpenses.map(item => `
+          <ion-item>
+            <ion-label>
+              <h2>${item.title} <ion-badge color="secondary">${item.category}</ion-badge></h2>
+              <p><ion-icon name="calendar-outline" class="title-icon"></ion-icon>日期: ${item.date}</p>
+            </ion-label>
+            <ion-note slot="end" style="font-size: 16px; font-weight: bold; margin-right: 8px;">
+              HK$ ${parseFloat(item.amount).toFixed(1)}
+            </ion-note>
+            <ion-button slot="end" color="tertiary" fill="clear" class="edit-expense-btn" data-id="${item.id}">
+              <ion-icon name="create-outline" slot="icon-only"></ion-icon>
+            </ion-button>
+            <ion-button slot="end" color="danger" fill="clear" class="delete-expense-btn" data-id="${item.id}">
+              <ion-icon name="trash-outline" slot="icon-only"></ion-icon>
+            </ion-button>
+          </ion-item>
+        `).join('');
+      }
+
+      let total = 0;
+      const categoryTotals = {};
+      categories.forEach(cat => categoryTotals[cat] = 0);
+
+      expenses.forEach(item => {
+        const amt = parseFloat(item.amount) || 0;
+        total += amt;
+        if (categoryTotals[item.category] !== undefined) {
+          categoryTotals[item.category] += amt;
+        } else {
+          categoryTotals[item.category] = amt;
+        }
+      });
+
+      totalExpenseEl.innerText = `HK$ ${total.toFixed(1)}`;
+
+      const chartLabels = [];
+      const chartData = [];
+      let maxCategory = '';
+      let maxAmount = 0;
+
+      Object.keys(categoryTotals).forEach(cat => {
+        const amt = categoryTotals[cat];
+        if (amt > 0) {
+          chartLabels.push(cat);
+          chartData.push(amt);
+        }
+        if (amt > maxAmount) {
+          maxAmount = amt;
+          maxCategory = cat;
+        }
+      });
+
+      updateCharts(chartLabels, chartData);
+
+      if (total > 0 && maxCategory) {
+        const ratio = ((maxAmount / total) * 100).toFixed(1);
+        analyticsAdvice.innerHTML = `<ion-icon name="bulb-outline" class="title-icon"></ion-icon>診斷：您目前的最大支出項目為「${maxCategory}」，佔總支出 ${ratio}%。`;
+      } else {
+        analyticsAdvice.innerText = "請持續保持記帳習慣！";
+      }
+
+      renderCategorySelectOptions();
+      renderCategoryManageList();
+    }
+
+    // 📤 CSV 匯出邏輯 (支援中文字元 UTF-8 BOM)
+    exportCsvBtn.addEventListener('click', () => {
+      if (expenses.length === 0) {
+        alert('目前沒有任何消費紀錄可供匯出。');
+        return;
+      }
+
+      let csvContent = '\uFEFF'; // UTF-8 BOM
+      csvContent += '日期,消費項目,金額(HK$),類別\n';
+
+      expenses.forEach(item => {
+        const escapedTitle = `"${item.title.replace(/"/g, '""')}"`;
+        csvContent += `${item.date},${escapedTitle},${item.amount},${item.category}\n`;
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `消費紀錄備份_${getTodayString()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+
+    // 📤 JSON 匯出邏輯
+    exportJsonBtn.addEventListener('click', () => {
+      const backupData = {
+        categories: categories,
+        expenses: expenses,
+        exportedAt: new Date().toISOString()
+      };
+
+      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(backupData, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute('href', dataStr);
+      downloadAnchor.setAttribute('download', `消費習慣App_完整備份_${getTodayString()}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    });
+
+    // 📥 JSON 匯入邏輯
+    triggerImportBtn.addEventListener('click', () => {
+      importJsonInput.click();
+    });
+
+    importJsonInput.addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const importedData = JSON.parse(e.target.result);
+          if (importedData.expenses && Array.isArray(importedData.expenses)) {
+            expenses = importedData.expenses;
+            if (importedData.categories && Array.isArray(importedData.categories)) {
+              categories = importedData.categories;
+            }
+            saveData();
+            renderApp();
+            alert('數據匯入成功！');
+          } else {
+            alert('匯入失敗：檔案格式不正確。');
+          }
+        } catch (err) {
+          alert('解析檔案時發生錯誤，請確保上傳的是正確的 JSON 備份檔。');
+        }
+      };
+      reader.readAsText(file);
+      importJsonInput.value = '';
+    });
+
+    addCategoryBtn.addEventListener('click', () => {
+      const newCat = inputNewCategory.value ? inputNewCategory.value.trim() : '';
+      if (newCat === '' || categories.includes(newCat)) {
+        categoryError.hidden = false;
+      } else {
+        categoryError.hidden = true;
+        categories.push(newCat);
+        inputNewCategory.value = '';
+        saveData();
+        renderApp();
+      }
+    });
+
+    categoryManageList.addEventListener('click', async (event) => {
+      const deleteBtn = event.target.closest('.delete-cat-btn');
+      if (deleteBtn) {
+        const index = deleteBtn.getAttribute('data-index');
+        const catToDelete = categories[index];
+
+        const alert = document.createElement('ion-alert');
+        alert.header = '刪除類別警告';
+        alert.message = `刪除類別「${catToDelete}」將會【一併刪除】屬於該類別的所有消費紀錄，確定要繼續嗎？`;
+        alert.buttons = [
+          { text: '取消', role: 'cancel' },
+          {
+            text: '確定刪除',
+            role: 'destructive',
+            handler: () => {
+              categories.splice(index, 1);
+              expenses = expenses.filter(item => item.category !== catToDelete);
+              saveData();
+              renderApp();
+            }
+          }
+        ];
+        document.body.appendChild(alert);
+        await alert.present();
+      }
+    });
+
+    expenseListContainer.addEventListener('click', async (event) => {
+      const deleteBtn = event.target.closest('.delete-expense-btn');
+      const editBtn = event.target.closest('.edit-expense-btn');
+
+      if (deleteBtn) {
+        const id = parseInt(deleteBtn.getAttribute('data-id'));
+        const itemToDelete = expenses.find(i => i.id === id);
+
+        if (itemToDelete) {
+          const alert = document.createElement('ion-alert');
+          alert.header = '刪除確認';
+          alert.message = `確定要刪除「${itemToDelete.title}」嗎？`;
+          alert.buttons = [
+            { text: '取消', role: 'cancel' },
+            {
+              text: '確定刪除',
+              handler: () => {
+                expenses = expenses.filter(i => i.id !== id);
+                saveData();
+                renderApp();
+              }
+            }
+          ];
+          document.body.appendChild(alert);
+          await alert.present();
+        }
+      }
+
+      if (editBtn) {
+        const id = parseInt(editBtn.getAttribute('data-id'));
+        openEditModal(id);
+      }
+    });
+
+    openFab.addEventListener('click', () => {
+      inputDate.value = getTodayString();
+      addOverlay.style.display = 'flex';
+    });
+    
+    closeModalBtn.addEventListener('click', () => resetAndCloseModal());
+
+    function resetAndCloseModal() {
+      inputTitle.value = '';
+      inputAmount.value = '';
+      inputDate.value = getTodayString();
+      titleError.hidden = true;
+      amountError.hidden = true;
+      dateError.hidden = true;
+      addOverlay.style.display = 'none';
+    }
+
+    confirmAddBtn.addEventListener('click', () => {
+      const titleVal = inputTitle.value ? inputTitle.value.trim() : '';
+      const amountVal = parseFloat(inputAmount.value);
+      const dateVal = inputDate.value;
+      const categoryVal = selectCategory.value;
+
+      let isValid = true;
+      if (titleVal === '') {
+        titleError.hidden = false;
+        isValid = false;
+      } else {
+        titleError.hidden = true;
+      }
+
+      if (isNaN(amountVal) || amountVal <= 0) {
+        amountError.hidden = false;
+        isValid = false;
+      } else {
+        amountError.hidden = true;
+      }
+
+      if (!dateVal) {
+        dateError.hidden = false;
+        isValid = false;
+      } else {
+        dateError.hidden = true;
+      }
+
+      if (isValid) {
+        const newExpense = {
+          id: Date.now(),
+          title: titleVal,
+          amount: amountVal,
+          category: categoryVal,
+          date: dateVal
+        };
+
+        expenses.unshift(newExpense);
+        saveData();
+        renderApp();
+        resetAndCloseModal();
+      }
+    });
+
+    // 🌙 切換深色模式時同步重新渲染圖表文字顏色
+    darkModeToggle.addEventListener('ionChange', (e) => {
+      document.body.classList.toggle('dark-mode', e.detail.checked);
+      renderApp();
+    });
+
+    clearDataBtn.addEventListener('click', async () => {
+      const alert = document.createElement('ion-alert');
+      alert.header = '警告';
+      alert.message = '確定要清空所有消費資料與自訂類別嗎？';
+      alert.buttons = [
+        { text: '取消', role: 'cancel' },
+        {
+          text: '清除',
+          handler: () => {
+            expenses = [];
+            categories = [...defaultCategories];
+            saveData();
+            renderApp();
+          }
+        }
+      ];
+      document.body.appendChild(alert);
+      await alert.present();
+    });
+
+    renderApp();
+
+  </script>
+</body>
+</html>
